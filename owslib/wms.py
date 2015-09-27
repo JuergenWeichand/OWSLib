@@ -155,12 +155,7 @@ class WebMapService(object):
             self.version, url=self.url, un=self.username, pw=self.password
             )
         u = self._open(reader.capabilities_url(self.url))
-        # check for service exceptions, and return
-        if u.info()['Content-Type'] == 'application/vnd.ogc.se_xml':
-            se_xml = u.read()
-            se_tree = etree.fromstring(se_xml)
-            err_message = str(se_tree.find('ServiceException').text).strip()
-            raise ServiceException(err_message, se_xml)
+        self.__handle_exception(u)
         return u
 
     def __build_getmap_request(self, layers=None, styles=None, srs=None, bbox=None,
@@ -259,13 +254,7 @@ class WebMapService(object):
         data = urlencode(request)
         
         u = openURL(base_url, data, method, username=self.username, password=self.password, timeout=timeout or self.timeout)
-
-        # check for service exceptions, and return
-        if u.info()['Content-Type'] == 'application/vnd.ogc.se_xml':
-            se_xml = u.read()
-            se_tree = etree.fromstring(se_xml)
-            err_message = six.text_type(se_tree.find('ServiceException').text).strip()
-            raise ServiceException(err_message, se_xml)
+        self.__handle_exception(u)
         return u
 
 
@@ -305,13 +294,7 @@ class WebMapService(object):
         data = urlencode(request)
 
         u = openURL(base_url, data, method, username=self.username, password=self.password, timeout=timeout or self.timeout)
-
-        # check for service exceptions, and return
-        if u.info()['Content-Type'] == 'application/vnd.ogc.se_xml':
-            se_xml = u.read()
-            se_tree = etree.fromstring(se_xml)
-            err_message = six.text_type(se_tree.find('ServiceException').text).strip()
-            raise ServiceException(err_message, se_xml)
+        self.__handle_exception(u)
         return u
 
     def getServiceXML(self):
@@ -326,6 +309,14 @@ class WebMapService(object):
             if item.name == name:
                 return item
         raise KeyError("No operation named %s" % name)
+
+    def __handle_exception(self, u):
+        if 'application/vnd.ogc.se_xml' in u.info()['Content-Type']:
+            se_xml = u.read()
+            se_tree = etree.fromstring(se_xml)
+            err_message = six.text_type(se_tree.find('ServiceException').text).strip()
+            raise ServiceException(err_message, se_xml)
+
     
 class ServiceIdentification(object):
     ''' Implements IServiceIdentificationMetadata '''
